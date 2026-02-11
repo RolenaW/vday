@@ -76,7 +76,16 @@ class _ValentineHomeState extends State<ValentineHome>
             onChanged: (value) =>
                 setState(() => selectedEmoji = value ?? selectedEmoji),
           ),
-
+          Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/heart.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
 
           /// Pulse Button
