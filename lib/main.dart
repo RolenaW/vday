@@ -76,35 +76,6 @@ class _ValentineHomeState extends State<ValentineHome>
             onChanged: (value) =>
                 setState(() => selectedEmoji = value ?? selectedEmoji),
           ),
-          Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/heart.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          /// Pulse Button
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                isPulsing = !isPulsing;
-              });
-
-              if (isPulsing) {
-                _controller.forward();
-              } else {
-                _controller.stop();
-                _controller.reset();
-              }
-            },
-            child: Text(isPulsing ? 'Stop Pulse 💓' : 'Start Pulse 💓'),
-          ),
-
           const SizedBox(height: 16),
 
           /// Heart Display
