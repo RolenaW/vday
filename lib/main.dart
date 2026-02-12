@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const ValentineApp());
@@ -29,7 +30,9 @@ class _ValentineHomeState extends State<ValentineHome>
 
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+
   bool isPulsing = false;
+  bool showBalloons = false;
 
   @override
   void initState() {
@@ -37,7 +40,7 @@ class _ValentineHomeState extends State<ValentineHome>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 800),
     );
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
@@ -59,38 +62,94 @@ class _ValentineHomeState extends State<ValentineHome>
     super.dispose();
   }
 
+  void togglePulse() {
+    setState(() => isPulsing = !isPulsing);
+
+    if (isPulsing) {
+      _controller.forward();
+    } else {
+      _controller.stop();
+      _controller.reset();
+    }
+  }
+
+  void launchBalloons() {
+    setState(() => showBalloons = true);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() => showBalloons = false);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cupid\'s Canvas')),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-
-          /// Emoji Selector
-          DropdownButton<String>(
-            value: selectedEmoji,
-            items: emojiOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (value) =>
-                setState(() => selectedEmoji = value ?? selectedEmoji),
+      appBar: AppBar(title: const Text("Cupid's Canvas")),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 0.8,
+            colors: [Color(0xFFFFCDD2), Color(0xFFD32F2F)],
           ),
-          const SizedBox(height: 16),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
 
-          /// Heart Display
-          Expanded(
-            child: Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: CustomPaint(
-                  size: const Size(300, 300),
-                  painter: HeartEmojiPainter(type: selectedEmoji),
+            DropdownButton<String>(
+              value: selectedEmoji,
+              items: emojiOptions
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => selectedEmoji = value ?? selectedEmoji),
+            ),
+
+            const SizedBox(height: 10),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: togglePulse,
+                  child: Text(
+                      isPulsing ? 'Stop Pulse 💓' : 'Start Pulse 💓'),
                 ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: launchBalloons,
+                  child: const Text('Balloon Celebration 🎈'),
+                ),
+              ],
+            ),
+
+            Expanded(
+              child: Stack(
+                children: [
+                  Center(
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: CustomPaint(
+                        size: const Size(300, 300),
+                        painter:
+                            HeartEmojiPainter(type: selectedEmoji),
+                      ),
+                    ),
+                  ),
+
+                  if (showBalloons)
+                    const Positioned.fill(
+                      child: BalloonOverlay(),
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -103,9 +162,7 @@ class HeartEmojiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final paint = Paint()..style = PaintingStyle.fill;
 
-    /// Heart Base
     final heartPath = Path()
       ..moveTo(center.dx, center.dy + 60)
       ..cubicTo(center.dx + 110, center.dy - 10,
@@ -114,16 +171,34 @@ class HeartEmojiPainter extends CustomPainter {
           center.dx - 110, center.dy - 10, center.dx, center.dy + 60)
       ..close();
 
-    paint.color = type == 'Party Heart'
-        ? const Color(0xFFF48FB1)
-        : const Color(0xFFE91E63);
+    /// Love Trail Glow
+    final glowPaint = Paint()
+      ..color = Colors.white.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 15;
+    canvas.drawPath(heartPath, glowPaint);
 
-    canvas.drawPath(heartPath, paint);
+    /// Gradient Heart Fill
+    final rect = Rect.fromCenter(
+        center: center, width: 220, height: 220);
+
+    final gradient = LinearGradient(
+      colors: type == 'Party Heart'
+          ? [Colors.pinkAccent, Colors.orange]
+          : [Colors.redAccent, Colors.pink],
+    );
+
+    final fillPaint = Paint()
+      ..shader = gradient.createShader(rect);
+
+    canvas.drawPath(heartPath, fillPaint);
 
     /// Eyes
     final eyePaint = Paint()..color = Colors.white;
-    canvas.drawCircle(Offset(center.dx - 30, center.dy - 10), 10, eyePaint);
-    canvas.drawCircle(Offset(center.dx + 30, center.dy - 10), 10, eyePaint);
+    canvas.drawCircle(
+        Offset(center.dx - 30, center.dy - 10), 10, eyePaint);
+    canvas.drawCircle(
+        Offset(center.dx + 30, center.dy - 10), 10, eyePaint);
 
     /// Smile
     final mouthPaint = Paint()
@@ -134,40 +209,30 @@ class HeartEmojiPainter extends CustomPainter {
     canvas.drawArc(
         Rect.fromCircle(center: Offset(center.dx, center.dy + 20), radius: 30),
         0,
-        3.14,
+        pi,
         false,
         mouthPaint);
 
-    /// Sweet Heart Extras
-    if (type == 'Sweet Heart') {
-      final blushPaint =
-          Paint()..color = Colors.pinkAccent.withOpacity(0.4);
+    /// Sparkles
+    final sparklePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2;
 
-      canvas.drawCircle(
-          Offset(center.dx - 50, center.dy + 10), 12, blushPaint);
-      canvas.drawCircle(
-          Offset(center.dx + 50, center.dy + 10), 12, blushPaint);
+    for (int i = 0; i < 8; i++) {
+      final angle = (i / 8) * 2 * pi;
+      final dx = center.dx + cos(angle) * 140;
+      final dy = center.dy + sin(angle) * 140;
+
+      canvas.drawLine(
+          Offset(dx - 5, dy), Offset(dx + 5, dy), sparklePaint);
+      canvas.drawLine(
+          Offset(dx, dy - 5), Offset(dx, dy + 5), sparklePaint);
     }
 
-    /// Party Heart Extras
+    /// Party Confetti
     if (type == 'Party Heart') {
-      /// Party Hat
-      final hatPaint = Paint()..color = const Color(0xFFFFD54F);
-      final hatPath = Path()
-        ..moveTo(center.dx, center.dy - 120)
-        ..lineTo(center.dx - 50, center.dy - 40)
-        ..lineTo(center.dx + 50, center.dy - 40)
-        ..close();
-      canvas.drawPath(hatPath, hatPaint);
+      final confettiPaint = Paint();
 
-      /// Hat Ball
-      canvas.drawCircle(
-          Offset(center.dx, center.dy - 120),
-          8,
-          Paint()..color = Colors.red);
-
-      /// Confetti
-      final confettiPaint = Paint()..style = PaintingStyle.fill;
       final colors = [
         Colors.blue,
         Colors.green,
@@ -178,19 +243,56 @@ class HeartEmojiPainter extends CustomPainter {
 
       for (int i = 0; i < 20; i++) {
         confettiPaint.color = colors[i % colors.length];
-        canvas.drawCircle(
-          Offset(
-            (size.width * (i % 5) / 5) + 30,
-            (size.height * (i ~/ 5) / 4) + 20,
-          ),
-          5,
-          confettiPaint,
-        );
+
+        final x = Random().nextDouble() * size.width;
+        final y = Random().nextDouble() * size.height;
+
+        if (i % 2 == 0) {
+          canvas.drawCircle(Offset(x, y), 4, confettiPaint);
+        } else {
+          final path = Path()
+            ..moveTo(x, y)
+            ..lineTo(x + 6, y + 10)
+            ..lineTo(x - 6, y + 10)
+            ..close();
+          canvas.drawPath(path, confettiPaint);
+        }
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant HeartEmojiPainter oldDelegate) =>
-      oldDelegate.type != type;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class BalloonOverlay extends StatelessWidget {
+  const BalloonOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: List.generate(12, (index) {
+        final random = Random();
+        return Positioned(
+          left: random.nextDouble() * 300,
+          bottom: -50,
+          child: TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0, end: 500),
+            duration: Duration(seconds: 3 + random.nextInt(2)),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, -value),
+                child: child,
+              );
+            },
+            child: Icon(
+              Icons.circle,
+              size: 30,
+              color: Colors.primaries[index % Colors.primaries.length],
+            ),
+          ),
+        );
+      }),
+    );
+  }
 }
